@@ -1,0 +1,59 @@
+<style>
+  .login-notification {
+    max-width: 90%;
+    width: 100%;
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    text-align: center;
+  }
+
+  .login-notification h2 {
+    color: #1e40af;
+    margin-bottom: 15px;
+    font-size: 24px;
+    font-weight: 600;
+  }
+
+  .login-notification p {
+    color: #4b5563;
+    line-height: 1.6;
+    font-size: 16px;
+    margin: 0;
+    background-color: #f1f5f9;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #3b82f6;
+  }
+
+  @media (max-width: 480px) {
+    .login-notification {
+      padding: 15px;
+    }
+
+    .login-notification h2 {
+      font-size: 18px;
+    }
+
+    .login-notification p {
+      font-size: 14px;
+    }
+  }
+</style>
+
+<div class="login-notification">
+  <h2>Hi <span id="user-email">
+      <%= email %>
+    </span></h2>
+  <p>
+    You logged in to your account on <span id="login-date">
+      <%= date %>
+    </span> at <span id="login-time">
+      <%= time %>
+    </span>.
+  </p>
+</div>

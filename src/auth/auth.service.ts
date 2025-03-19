@@ -13,6 +13,7 @@ import {
 } from 'src/utils/global';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -20,6 +21,7 @@ export class AuthService {
     @Inject(DRIZZLE) private db: DrizzleDBType,
     private readonly _usersService: UsersService,
     private readonly _jwtService: JwtService,
+    private readonly _mailService: MailService,
   ) {}
 
   /**
@@ -38,9 +40,11 @@ export class AuthService {
       });
 
       if (existingUsers.length > 0) {
-        const isEmailTaken = existingUsers.some(user => user.email === email);
-        const isUsernameTaken = existingUsers.some(user => user.username === username);
-        
+        const isEmailTaken = existingUsers.some((user) => user.email === email);
+        const isUsernameTaken = existingUsers.some(
+          (user) => user.username === username,
+        );
+
         if (isEmailTaken) {
           throw new BadRequestException('Email already registered');
         }
@@ -118,6 +122,13 @@ export class AuthService {
         userType: user.userType as UserType,
       });
 
+      // Send login notification without blocking the login process
+      await this._mailService.sendLogInEMail(user.email);
+      // .catch((error) => {
+      //   console.error('Failed to send login notification:', error);
+      //   // Don't throw error, just log it
+      // });
+
       return {
         access_token,
       };
@@ -141,10 +152,11 @@ export class AuthService {
       if (!user) {
         throw new BadRequestException('User not found');
       }
-      
+
       // Exclude sensitive information
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, resetPasswordToken, ...userInfo } = user;
-      
+
       return {
         ...userInfo,
         isActive: !user.deletedAt,

@@ -1,5 +1,5 @@
 {
-  "id": "6b07f188-f3ef-4b81-a196-9d32ec125101",
+  "id": "d30e7dc6-188a-42c7-814f-e4f1540eafc8",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -39,13 +39,19 @@
           "notNull": true,
           "default": false
         },
+        "verificationToken": {
+          "name": "verificationToken",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "role": {
           "name": "role",
           "type": "Role",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'Manager'"
+          "default": "'USER'"
         },
         "resetPasswordToken": {
           "name": "resetPasswordToken",
@@ -64,7 +70,8 @@
           "name": "updatedAt",
           "type": "timestamp (3)",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "now()"
         },
         "deletedAt": {
           "name": "deletedAt",
@@ -103,7 +110,7 @@
       "schema": "public",
       "values": [
         "SUPERADMIN",
-        "Manager",
+        "MANAGER",
         "DOCTOR",
         "USER"
       ]

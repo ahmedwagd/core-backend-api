@@ -5,29 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1742282063165,
-      "tag": "0000_sour_lockjaw",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1742283513536,
-      "tag": "0001_melted_meltdown",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1742283686688,
-      "tag": "0002_lumpy_human_fly",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1742369600168,
-      "tag": "0003_omniscient_spacker_dave",
+      "when": 1742406320745,
+      "tag": "0000_green_joshua_kane",
       "breakpoints": true
     }
   ]

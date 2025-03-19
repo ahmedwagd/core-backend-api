@@ -22,6 +22,7 @@ export const users = pgTable('users', {
   username: varchar('username', { length: 150 }).unique(),
   password: varchar('password', { length: 255 }).notNull(),
   isVerified: boolean('is_verified').notNull().default(false),
+  verificationToken: varchar('verificationToken', { length: 255 }),
   userType: roleEnum('role').notNull().default('USER'),
   resetPasswordToken: varchar('resetPasswordToken', { length: 255 }),
   createdAt: timestamp('createdAt', { precision: 3 }).notNull().defaultNow(),

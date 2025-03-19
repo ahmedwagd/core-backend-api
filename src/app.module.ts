@@ -4,6 +4,7 @@ import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
 import { UsersModule } from './users/users.module';
 import { CLoggerModule } from './logger/logger.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { CLoggerModule } from './logger/logger.module';
     UsersModule,
     AuthModule,
     CLoggerModule,
+    MailModule,
   ],
   controllers: [],
   providers: [],
