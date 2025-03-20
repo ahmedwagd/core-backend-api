@@ -13,7 +13,7 @@ import {
 } from 'src/utils/global';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { MailService } from 'src/mail/mail.service';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -21,7 +21,7 @@ export class AuthService {
     @Inject(DRIZZLE) private db: DrizzleDBType,
     private readonly _usersService: UsersService,
     private readonly _jwtService: JwtService,
-    private readonly _mailService: MailService,
+    // private readonly _mailService: MailService,
   ) {}
 
   /**
@@ -123,7 +123,7 @@ export class AuthService {
       });
 
       // Send login notification without blocking the login process
-      await this._mailService.sendLogInEMail(user.email);
+      // await this._mailService.sendLogInEMail(user.email);
       // .catch((error) => {
       //   console.error('Failed to send login notification:', error);
       //   // Don't throw error, just log it
@@ -168,7 +168,31 @@ export class AuthService {
       throw new BadRequestException('Failed to fetch current user');
     }
   }
-
+  // change password add try catch
+  public async changePassword(id: number, changePasswordDto: ChangePasswordDto) {
+    try {
+      const { oldPassword, newPassword } = changePasswordDto;
+      const user = await this._usersService.findOne(id);
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+    const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+    if (!isPasswordValid) {
+      throw new BadRequestException('Invalid old password');
+    }
+    
+    const hashedPassword = await this._usersService.hashPassword(newPassword);
+    await this.db.update(users).set({ password: hashedPassword }).where(eq(users.id, id));
+    return {
+      message: 'Password changed successfully',
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to change password');
+    }
+  }
   /**
    * Generate Json Web Token
    * @param payload JWT payload
