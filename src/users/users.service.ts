@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { asc, eq, or, sql } from 'drizzle-orm';
@@ -36,18 +35,19 @@ export class UsersService {
           limit,
           orderBy: [asc(users.id)],
         }),
-        this.db.select({ count: sql<number>`count(*)` }).from(users),
+        this.db
+          .select({ count: sql<number>`count(*)`.as('count') }) // Explicit alias
+          .from(users),
       ]);
 
       return {
         users: usersList,
-        total: Number(total[0].count),
+        total: Number(total[0]?.count ?? 0),
         page,
         limit,
       };
     } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      throw new BadRequestException('Failed to fetch users');
+      this.handleError(error, 'Failed to fetch users');
     }
   }
 
@@ -65,34 +65,11 @@ export class UsersService {
     try {
       const { email, password, username, userType, isVerified } = createUserDto;
 
-      // Check if non-superadmin is trying to create a superadmin
-      if (
-        payload.userType !== UserType.SUPERADMIN &&
-        userType === UserType.SUPERADMIN
-      ) {
-        throw new BadRequestException(
-          'Only superadmins can create other superadmins',
-        );
-      }
+      // Validate permissions
+      this.validateSuperadminCreation(payload.userType, userType as UserType);
 
-      // Check for existing users in a single query
-      const existingUsers = await this.db.query.users.findMany({
-        where: or(eq(users.email, email), eq(users.username, username)),
-      });
-
-      if (existingUsers.length > 0) {
-        const isEmailTaken = existingUsers.some((user) => user.email === email);
-        const isUsernameTaken = existingUsers.some(
-          (user) => user.username === username,
-        );
-
-        if (isEmailTaken) {
-          throw new BadRequestException('Email already registered');
-        }
-        if (isUsernameTaken) {
-          throw new BadRequestException('Username already taken');
-        }
-      }
+      // Check for existing users
+      await this.validateUniqueUserFields(email, username);
 
       // Hash password and create user
       const hashedPassword = await this.hashPassword(password);
@@ -113,8 +90,7 @@ export class UsersService {
 
       return newUser;
     } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      throw new BadRequestException('Failed to create user');
+      this.handleError(error, 'Failed to create user');
     }
   }
 
@@ -127,15 +103,13 @@ export class UsersService {
   public async findOne(id: number): Promise<typeof users.$inferSelect> {
     try {
       const user = await this.db.query.users.findFirst({
-        // where: eq(users.id, id),
         where: (user, { eq }) => eq(user.id, id),
       });
 
-      if (!user) throw new BadRequestException('no users for this email');
+      if (!user) throw new BadRequestException('User not found');
       return user;
     } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      throw new BadRequestException('Failed to fetch user');
+      this.handleError(error, 'Failed to fetch user');
     }
   }
 
@@ -151,11 +125,10 @@ export class UsersService {
         where: (user, { eq }) => eq(user.email, email),
       });
 
-      if (!user) throw new BadRequestException('no users for this email');
+      if (!user) throw new BadRequestException('No user found with this email');
       return user;
     } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      throw new BadRequestException('Failed to fetch user');
+      this.handleError(error, 'Failed to fetch user');
     }
   }
 
@@ -174,63 +147,35 @@ export class UsersService {
   ): Promise<typeof users.$inferSelect> {
     try {
       const user = await this.findOne(id);
-      if (!user) {
-        throw new BadRequestException('User not found');
-      }
+      // No need to check if user exists as findOne already throws if not found
 
       const { password, email, username, userType } = updateUserDto;
 
-      // Check if non-superadmin is trying to update a superadmin
-      if (
-        user.userType === UserType.SUPERADMIN &&
-        payload.userType !== UserType.SUPERADMIN
-      ) {
-        throw new BadRequestException(
-          'Only superadmins can update other superadmins',
-        );
+      // Validate all permissions
+      this.validateSuperadminModification(
+        user,
+        payload.userType,
+        userType as UserType,
+      );
+
+      // Check for email/username conflicts
+      if (email || username) {
+        await this.validateUniqueUserFieldsForUpdate(id, email, username);
       }
 
-      // Check if non-superadmin is trying to set userType to superadmin
-      if (
-        userType === UserType.SUPERADMIN &&
-        payload.userType !== UserType.SUPERADMIN
-      ) {
-        throw new BadRequestException(
-          'Only superadmins can set user type to superadmin',
-        );
-      }
-
-      // Check for existing users in a single query
-      const existingUsers = await this.db.query.users.findMany({
-        where: or(eq(users.email, email), eq(users.username, username)),
-      });
-
-      if (existingUsers.length > 0) {
-        const isEmailTaken = existingUsers.some(
-          (user) => user.email === email && user.id !== id,
-        );
-        const isUsernameTaken = existingUsers.some(
-          (user) => user.username === username && user.id !== id,
-        );
-
-        if (isEmailTaken) {
-          throw new BadRequestException('Email already registered');
-        }
-        if (isUsernameTaken) {
-          throw new BadRequestException('Username already taken');
-        }
-      }
+      // Process update data
+      const updateData = { ...updateUserDto };
 
       // Hash password if provided
       if (password) {
-        updateUserDto.password = await this.hashPassword(password);
+        updateData.password = await this.hashPassword(password);
       }
 
       // Update user
       const [updatedUser] = await this.db
         .update(users)
         .set({
-          ...updateUserDto,
+          ...updateData,
           userType: userType as UserType,
         })
         .where(eq(users.id, id))
@@ -242,13 +187,13 @@ export class UsersService {
 
       return updatedUser;
     } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      throw new BadRequestException('Failed to update user');
+      this.handleError(error, 'Failed to update user');
     }
   }
 
   /**
    * Remove a user by their ID
+   * @param payload - The JWT payload of the requesting user
    * @param id - The ID of the user to remove
    * @returns A message indicating the user was deleted
    * @throws BadRequestException if no user is found or if the user is a superadmin
@@ -256,22 +201,16 @@ export class UsersService {
   async remove(payload: JWTPayloadType, id: number) {
     try {
       const user = await this.findOne(id);
-      if (!user) throw new BadRequestException('no user found');
+      // No need to check if user exists as findOne already throws if not found
 
-      // check if id is for superadmin and payload is not superadmin
-      if (
-        user.userType === UserType.SUPERADMIN &&
-        payload.userType !== UserType.SUPERADMIN
-      ) {
-        throw new BadRequestException('cannot delete superadmin');
-      }
+      // Validate superadmin permissions
+      this.validateSuperadminDeletion(user, payload.userType);
 
       await this.db.delete(users).where(eq(users.id, id)).execute();
 
-      return { message: 'user deleted' };
+      return { message: 'User deleted successfully' };
     } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      throw new BadRequestException('Failed to update user');
+      this.handleError(error, 'Failed to delete user');
     }
   }
 
@@ -283,5 +222,149 @@ export class UsersService {
   public async hashPassword(password: string): Promise<string> {
     const salt = await bcrypt.genSalt(10);
     return await bcrypt.hash(password, salt);
+  }
+
+  /**
+   * Validates if a non-superadmin is trying to create a superadmin
+   * @private
+   */
+  private validateSuperadminCreation(
+    creatorType: UserType,
+    newUserType?: UserType,
+  ): void {
+    if (
+      creatorType !== UserType.SUPERADMIN &&
+      newUserType === UserType.SUPERADMIN
+    ) {
+      throw new BadRequestException(
+        'Only superadmins can create other superadmins',
+      );
+    }
+  }
+
+  /**
+   * Validates if a non-superadmin is trying to update or change role of a superadmin
+   * @private
+   */
+  private validateSuperadminModification(
+    targetUser: typeof users.$inferSelect,
+    modifierType: UserType,
+    newUserType?: UserType,
+  ): void {
+    // Check if non-superadmin is trying to update a superadmin
+    if (
+      targetUser.userType === UserType.SUPERADMIN &&
+      modifierType !== UserType.SUPERADMIN
+    ) {
+      throw new BadRequestException(
+        'Only superadmins can update other superadmins',
+      );
+    }
+
+    // Check if non-superadmin is trying to set userType to superadmin
+    if (
+      newUserType === UserType.SUPERADMIN &&
+      modifierType !== UserType.SUPERADMIN
+    ) {
+      throw new BadRequestException(
+        'Only superadmins can set user type to superadmin',
+      );
+    }
+  }
+
+  /**
+   * Validates if a non-superadmin is trying to delete a superadmin
+   * @private
+   */
+  private validateSuperadminDeletion(
+    user: typeof users.$inferSelect,
+    deleterType: UserType,
+  ): void {
+    if (
+      user.userType === UserType.SUPERADMIN &&
+      deleterType !== UserType.SUPERADMIN
+    ) {
+      throw new BadRequestException(
+        'Only superadmins can delete other superadmins',
+      );
+    }
+  }
+
+  /**
+   * Validates that email and username are unique
+   * @private
+   */
+  private async validateUniqueUserFields(
+    email?: string,
+    username?: string,
+  ): Promise<void> {
+    if (!email && !username) return;
+
+    const existingUsers = await this.db.query.users.findMany({
+      where: or(
+        ...(email ? [eq(users.email, email)] : []),
+        ...(username ? [eq(users.username, username)] : []),
+      ),
+    });
+
+    if (existingUsers.length > 0) {
+      const isEmailTaken = existingUsers.some((user) => user.email === email);
+      const isUsernameTaken = existingUsers.some(
+        (user) => user.username === username,
+      );
+
+      if (isEmailTaken) {
+        throw new BadRequestException('Email already registered');
+      }
+      if (isUsernameTaken) {
+        throw new BadRequestException('Username already taken');
+      }
+    }
+  }
+
+  /**
+   * Validates that email and username are unique for updates (excluding current user)
+   * @private
+   */
+  private async validateUniqueUserFieldsForUpdate(
+    userId: number,
+    email?: string,
+    username?: string,
+  ): Promise<void> {
+    if (!email && !username) return;
+
+    const existingUsers = await this.db.query.users.findMany({
+      where: or(
+        ...(email ? [eq(users.email, email)] : []),
+        ...(username ? [eq(users.username, username)] : []),
+      ),
+    });
+
+    if (existingUsers.length > 0) {
+      const isEmailTaken = existingUsers.some(
+        (user) => user.email === email && user.id !== userId,
+      );
+      const isUsernameTaken = existingUsers.some(
+        (user) => user.username === username && user.id !== userId,
+      );
+
+      if (isEmailTaken) {
+        throw new BadRequestException('Email already registered');
+      }
+      if (isUsernameTaken) {
+        throw new BadRequestException('Username already taken');
+      }
+    }
+  }
+
+  /**
+   * Centralized error handling
+   * @private
+   */
+  private handleError(error: unknown, defaultMessage: string): never {
+    if (error instanceof BadRequestException) {
+      throw error;
+    }
+    throw new BadRequestException(defaultMessage);
   }
 }

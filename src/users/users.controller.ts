@@ -25,7 +25,10 @@ export class UsersController {
   @Post('create')
   @Roles(UserType.SUPERADMIN, UserType.MANAGER)
   @UseGuards(AuthRolesGuard)
-  async create(@CurrentUser() payload: JWTPayloadType, @Body() createUserDto: CreateUserDto) {
+  async create(
+    @CurrentUser() payload: JWTPayloadType,
+    @Body() createUserDto: CreateUserDto,
+  ) {
     return await this._usersService.create(payload, createUserDto);
   }
 
@@ -59,20 +62,13 @@ export class UsersController {
     return this._usersService.update(payload, id, updateUserDto);
   }
 
-  // @Patch('admin/:id')
-  // @Roles(UserType.SUPERADMIN, UserType.MANAGER)
-  // @UseGuards(AuthRolesGuard)
-  // async updateByAdmin(
-  //   @Param('id', ParseIntPipe) id: number,
-  //   @Body() updateUserDto: UpdateUserDto,
-  // ) {
-  //   return this._usersService.updateByAdmin(id, updateUserDto);
-  // }
-
   @Delete(':id')
   @Roles(UserType.SUPERADMIN, UserType.MANAGER)
   @UseGuards(AuthRolesGuard)
-  remove(@CurrentUser() payload: JWTPayloadType, @Param('id', ParseIntPipe) id: number) {
+  remove(
+    @CurrentUser() payload: JWTPayloadType,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     return this._usersService.remove(payload, id);
   }
 }
