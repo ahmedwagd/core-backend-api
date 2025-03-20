@@ -1,3 +1,4 @@
+import { relations } from 'drizzle-orm';
 import {
   boolean,
   pgEnum,
@@ -6,6 +7,7 @@ import {
   timestamp,
   varchar,
 } from 'drizzle-orm/pg-core';
+import { usersClinics } from './usersToClinics.schema';
 // import { relations } from 'drizzle-orm';
 
 export const roleEnum = pgEnum('Role', [
@@ -32,3 +34,16 @@ export const users = pgTable('users', {
     .$onUpdate(() => new Date()),
   deletedAt: timestamp('deletedAt', { precision: 3 }),
 });
+
+// Relations (optional, but recommended for type safety)
+export const usersRelations = relations(users, ({ many }) => ({
+  // profile: one(usersProfiles, {
+  //   fields: [users.id],
+  //   references: [usersProfiles.userId],
+  // }),
+  clinics: many(usersClinics),
+  // cancellationLog: one(cancellationLogs, {
+  //   fields: [users.cancellationLogId],
+  //   references: [cancellationLogs.id],
+  // }),
+}));
