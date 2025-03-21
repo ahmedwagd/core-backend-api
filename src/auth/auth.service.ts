@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { eq, or } from 'drizzle-orm';
 import { DRIZZLE } from 'src/database/database.module';
+import { clinics } from 'src/database/schema/clinics.schema';
 import { users } from 'src/database/schema/users.schema';
 import { UsersService } from 'src/users/users.service';
 import {
@@ -11,15 +12,17 @@ import {
   JWTPayloadType,
   UserType,
 } from 'src/utils/global';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
+import { UsersToClinicsService } from 'src/users/usersToClinics.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     @Inject(DRIZZLE) private db: DrizzleDBType,
     private readonly _usersService: UsersService,
+    private readonly _usersToClinicService: UsersToClinicsService,
     private readonly _jwtService: JwtService,
     // private readonly _mailService: MailService,
   ) {}
@@ -116,12 +119,16 @@ export class AuthService {
       if (user.deletedAt) {
         throw new BadRequestException('Account is deactivated');
       }
+      const userClinics =
+        await this._usersToClinicService.getCurrentUserClinics(user.id);
 
       const access_token = await this.generateJWT({
         id: user.id,
         userType: user.userType as UserType,
+        clinic: userClinics[0] as typeof clinics,
       });
 
+      //  TODO: Implement email service
       // Send login notification without blocking the login process
       // await this._mailService.sendLogInEMail(user.email);
       // .catch((error) => {
@@ -137,6 +144,29 @@ export class AuthService {
         throw error;
       }
       throw new BadRequestException('Login failed');
+    }
+  }
+
+  /**
+   * Logout user and invalidate access token
+   * @param id The ID of the current user
+   * @returns Message indicating logout success
+   * @throws BadRequestException if user not found
+   */
+  public async logout(id: number) {
+    try {
+      const user = await this._usersService.findOne(id);
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+      return {
+        message: 'Logout successful',
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to logout');
     }
   }
 
@@ -168,23 +198,61 @@ export class AuthService {
       throw new BadRequestException('Failed to fetch current user');
     }
   }
+
+  /**
+   * Get current user details excluding sensitive information
+   * @param id The ID of the current user
+   * @returns User data without sensitive fields
+   * @throws BadRequestException if user not found
+   */
+  public async getCurrentUserPayload(payload: JWTPayloadType) {
+    try {
+      const user = await this._usersService.findOne(payload.id);
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+      const userClinics =
+        await this._usersToClinicService.getCurrentUserClinics(user.id);
+      // Exclude sensitive information
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password, resetPasswordToken, ...userInfo } = user;
+
+      return {
+        ...userInfo,
+        isActive: !user.deletedAt,
+        userClinics,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to fetch current user');
+    }
+  }
+
   // change password add try catch
-  public async changePassword(id: number, changePasswordDto: ChangePasswordDto) {
+  public async changePassword(
+    id: number,
+    changePasswordDto: ChangePasswordDto,
+  ) {
     try {
       const { oldPassword, newPassword } = changePasswordDto;
       const user = await this._usersService.findOne(id);
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
-    const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
-    if (!isPasswordValid) {
-      throw new BadRequestException('Invalid old password');
-    }
-    
-    const hashedPassword = await this._usersService.hashPassword(newPassword);
-    await this.db.update(users).set({ password: hashedPassword }).where(eq(users.id, id));
-    return {
-      message: 'Password changed successfully',
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+      const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+      if (!isPasswordValid) {
+        throw new BadRequestException('Invalid old password');
+      }
+
+      const hashedPassword = await this._usersService.hashPassword(newPassword);
+      await this.db
+        .update(users)
+        .set({ password: hashedPassword })
+        .where(eq(users.id, id));
+      return {
+        message: 'Password changed successfully',
       };
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -193,6 +261,7 @@ export class AuthService {
       throw new BadRequestException('Failed to change password');
     }
   }
+
   /**
    * Generate Json Web Token
    * @param payload JWT payload

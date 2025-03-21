@@ -1,10 +1,10 @@
 import { relations } from 'drizzle-orm';
 import {
   boolean,
+  index,
   pgTable,
   serial,
   timestamp,
-  uniqueIndex,
   varchar,
 } from 'drizzle-orm/pg-core';
 import { usersClinics } from './usersToClinics.schema';
@@ -24,7 +24,7 @@ export const clinics = pgTable(
     deletedAt: timestamp('deletedAt', { precision: 3 }),
   },
   (table) => ({
-    emailIdx: uniqueIndex('clinics_email_key').on(table.email),
+    idIndex: index('clinics_id_index').on(table.id),
   }),
 );
 

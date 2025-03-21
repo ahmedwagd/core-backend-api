@@ -4,10 +4,11 @@ import { ClinicsController } from './clinics.controller';
 import { DatabaseModule } from 'src/database/database.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { JwtModule } from '@nestjs/jwt';
+import { ClinicsUsersService } from './clinicsUsers.service';
 
 @Module({
   controllers: [ClinicsController],
   imports: [DatabaseModule, forwardRef(() => AuthModule), JwtModule],
-  providers: [ClinicsService],
+  providers: [ClinicsService, ClinicsUsersService],
 })
 export class ClinicsModule {}

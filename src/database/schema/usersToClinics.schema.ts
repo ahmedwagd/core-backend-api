@@ -1,4 +1,11 @@
-import { foreignKey, integer, pgTable, serial } from 'drizzle-orm/pg-core';
+import {
+  foreignKey,
+  index,
+  integer,
+  pgTable,
+  serial,
+  unique,
+} from 'drizzle-orm/pg-core';
 import { users } from './users.schema';
 import { clinics } from './clinics.schema';
 import { relations } from 'drizzle-orm';
@@ -8,9 +15,12 @@ export const usersClinics = pgTable(
   {
     id: serial('id').primaryKey(),
     userId: integer('userId').notNull().unique(),
-    clinicId: integer('clinicId').notNull(),
+    clinicId: integer('clinicId').notNull().unique(),
   },
   (table) => ({
+    userIndex: index('users_clinics_user_id_index').on(table.userId),
+    clinicIndex: index('users_clinics_clinic_id_index').on(table.clinicId),
+    uniqueUserClinic: unique().on(table.userId, table.clinicId),
     userFk: foreignKey({
       columns: [table.userId],
       foreignColumns: [users.id],

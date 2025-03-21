@@ -1,4 +1,27 @@
-import { PartialType } from '@nestjs/swagger';
-import { CreateClinicDto } from './create-clinic.dto';
+import { IsString, IsEmail, IsOptional, IsBoolean } from 'class-validator';
 
-export class UpdateClinicDto extends PartialType(CreateClinicDto) {}
+export class UpdateClinicDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  address?: string;
+
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
+  @IsString()
+  @IsOptional()
+  manager?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
+}

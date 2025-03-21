@@ -4,10 +4,11 @@ import { AuthModule } from '../auth/auth.module';
 import { DatabaseModule } from '../database/database.module';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
+import { UsersToClinicsService } from './usersToClinics.service';
 
 @Module({
   controllers: [UsersController],
-  providers: [UsersService],
+  providers: [UsersService, UsersToClinicsService],
   imports: [DatabaseModule, forwardRef(() => AuthModule), JwtModule],
   exports: [UsersService],
 })

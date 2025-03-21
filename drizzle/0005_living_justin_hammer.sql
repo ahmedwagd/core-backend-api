@@ -1,0 +1,2 @@
+ALTER TABLE "users_clinics" ADD CONSTRAINT "users_clinics_clinicId_unique" UNIQUE("clinicId");--> statement-breakpoint
+ALTER TABLE "users_clinics" ADD CONSTRAINT "users_clinics_userId_clinicId_unique" UNIQUE("userId","clinicId");
