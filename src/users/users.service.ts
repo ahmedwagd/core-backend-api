@@ -103,7 +103,7 @@ export class UsersService {
 
       // If the new user is a superadmin, associate with all clinics
       if (newUser.userType === UserType.SUPERADMIN) {
-        await this._usersToClinicsProvider.ifUserTypeSuperAdminInsertUserToAllClinics(
+        await this._usersToClinicsProvider.onCreateSuperAdminAssociateWithAllClinics(
           newUser.id,
         );
       }

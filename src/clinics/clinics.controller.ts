@@ -27,7 +27,7 @@ export class ClinicsController {
     @CurrentUser() payload: JWTPayloadType,
     @Body() createClinicDto: CreateClinicDto,
   ) {
-    return this.clinicsService.create(payload, createClinicDto);
+    return await this.clinicsService.create(payload, createClinicDto);
   }
 
   @Get()

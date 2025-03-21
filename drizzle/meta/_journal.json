@@ -50,6 +50,13 @@
       "when": 1742554381842,
       "tag": "0006_silly_songbird",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1742598389712,
+      "tag": "0007_fixed_loa",
+      "breakpoints": true
     }
   ]
 }

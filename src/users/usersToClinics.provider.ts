@@ -85,30 +85,41 @@ export class UsersToClinicsProvider {
    * @param superAdminId - The ID of the newly created superadmin user
    * @returns Promise<void> - Resolves when the operation is complete
    */
-  public async ifUserTypeSuperAdminInsertUserToAllClinics(
+  // public async ifUserTypeSuperAdminInsertUserToAllClinics(
+  //   superAdminId: number,
+  // ): Promise<void> {
+  //   // Find all active and non-deleted clinics directly
+  //   const activeClinics = await this.db
+  //     .select({ id: clinics.id })
+  //     .from(clinics)
+  //     .where(and(isNull(clinics.deletedAt), eq(clinics.isActive, true)));
+
+  //   // Prepare records to insert into usersClinics junction table
+  //   const insertions = activeClinics.map((clinic) => ({
+  //     userId: superAdminId,
+  //     clinicId: clinic.id,
+  //   }));
+
+  //   // Insert records into usersClinics if there are any active clinics
+  //   if (insertions.length > 0) {
+  //     await this.db.insert(usersClinics).values(insertions);
+  //   }
+  // }
+
+  // Todo add Documentation
+  public async onCreateSuperAdminAssociateWithAllClinics(
     superAdminId: number,
   ): Promise<void> {
-    // Step 1: Verify the user is a superadmin
-    const user = await this._usersService.findOne(superAdminId);
-
-    if (user.userType !== 'SUPERADMIN') {
-      // Only proceed if the user is a superadmin
-      return;
-    }
-
-    // Step 2: Find all active and non-deleted clinics
     const activeClinics = await this.db
       .select({ id: clinics.id })
       .from(clinics)
       .where(and(isNull(clinics.deletedAt), eq(clinics.isActive, true)));
 
-    // Step 3: Prepare records to insert into usersClinics junction table
     const insertions = activeClinics.map((clinic) => ({
       userId: superAdminId,
       clinicId: clinic.id,
     }));
 
-    // Step 4: Insert records into usersClinics if there are any active clinics
     if (insertions.length > 0) {
       await this.db.insert(usersClinics).values(insertions);
     }

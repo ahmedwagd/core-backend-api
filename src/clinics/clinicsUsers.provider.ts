@@ -1,11 +1,10 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { eq } from 'drizzle-orm';
 import { DRIZZLE } from 'src/database/database.module';
-import { DrizzleDBType } from 'src/utils/global';
-import { ClinicsService } from './clinics.service';
 import { users } from 'src/database/schema/users.schema';
-import { and, eq, isNull } from 'drizzle-orm';
 import { usersClinics } from 'src/database/schema/usersToClinics.schema';
-import { clinics } from 'src/database/schema/clinics.schema';
+import { DrizzleDBType, UserType } from 'src/utils/global';
+import { ClinicsService } from './clinics.service';
 @Injectable()
 export class ClinicsUsersProvider {
   constructor(
@@ -14,40 +13,52 @@ export class ClinicsUsersProvider {
     private _clinicsService: ClinicsService,
   ) {}
 
-  // Todo add Documentation
-  public async onCreateSuperAdminAssociateWithAllClinics(
-    superAdminId: number,
-  ): Promise<void> {
-    const activeClinics = await this.db
-      .select({ id: clinics.id })
-      .from(clinics)
-      .where(and(isNull(clinics.deletedAt), eq(clinics.isActive, true)));
-
-    const insertions = activeClinics.map((clinic) => ({
-      userId: superAdminId,
-      clinicId: clinic.id,
-    }));
-
-    if (insertions.length > 0) {
-      await this.db.insert(usersClinics).values(insertions);
-    }
-  }
-
-  public async onCreateClinicFindAllSuperAdminsAndInsert(
+  /**
+   * Associates all superadmins with a newly created clinic by inserting records into the usersClinics table.
+   * @param clinicId - The ID of the newly created clinic
+   * @returns Promise<void> - Resolves when the operation is complete
+   */
+  public async associateClinicWithAllSuperadmins(
     clinicId: number,
   ): Promise<void> {
-    const superAdmins = await this.db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.userType, 'SUPERADMIN'));
+    console.log(`Associating clinic ${clinicId} with all superadmins...`);
 
-    const insertions = superAdmins.map((admin) => ({
-      userId: admin.id,
-      clinicId: clinicId,
-    }));
+    try {
+      // Get all superadmin users
+      const superAdmins = await this.db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.userType, UserType.SUPERADMIN));
 
-    if (insertions.length > 0) {
-      await this.db.insert(usersClinics).values(insertions);
+      if (superAdmins.length === 0) {
+        return;
+      }
+
+      // Retrieve existing associations for this clinic
+      const existingAssociations = await this.db
+        .select({ userId: usersClinics.userId })
+        .from(usersClinics)
+        .where(eq(usersClinics.clinicId, clinicId));
+
+      // Create a Set of existing userIds to prevent duplicates
+      const existingUserIds = new Set(
+        existingAssociations.map((assoc) => assoc.userId),
+      );
+
+      // Filter superadmins to only include those NOT already associated
+      const newAssociations = superAdmins
+        .filter((admin) => !existingUserIds.has(admin.id)) // Avoid duplicates
+        .map((admin) => ({
+          userId: admin.id,
+          clinicId: clinicId,
+        }));
+
+      if (newAssociations.length > 0) {
+        await this.db.insert(usersClinics).values(newAssociations);
+        console.log('Successfully associated clinic with superadmins.');
+      }
+    } catch (error) {
+      console.error('Error in associateClinicWithAllSuperadmins:', error);
     }
   }
 }

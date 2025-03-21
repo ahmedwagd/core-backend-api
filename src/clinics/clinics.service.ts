@@ -1,13 +1,11 @@
-import { ClinicsUsersProvider } from './clinicsUsers.provider';
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { asc, eq, or, sql } from 'drizzle-orm';
+import { DRIZZLE } from 'src/database/database.module';
+import { clinics } from 'src/database/schema/clinics.schema';
+import { DrizzleDBType, JWTPayloadType, UserType } from 'src/utils/global';
+import { ClinicsUsersProvider } from './clinicsUsers.provider';
 import { CreateClinicDto } from './dto/create-clinic.dto';
 import { UpdateClinicDto } from './dto/update-clinic.dto';
-import { DRIZZLE } from 'src/database/database.module';
-import { DrizzleDBType, JWTPayloadType } from 'src/utils/global';
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
-import { users } from 'src/database/schema/users.schema';
-import { usersClinics } from 'src/database/schema/usersToClinics.schema';
-import { clinics } from 'src/database/schema/clinics.schema';
 
 @Injectable()
 export class ClinicsService {
@@ -23,19 +21,16 @@ export class ClinicsService {
    * @returns The created clinic
    * @throws BadRequestException if clinic already exists or if non-superadmin tries to create superadmin
    */
-  async create(
-    payload: JWTPayloadType,
-    createClinicDto: CreateClinicDto,
-  ): Promise<typeof clinics.$inferSelect> {
+  async create(payload: JWTPayloadType, createClinicDto: CreateClinicDto) {
     try {
       const { name, address, phone, email, manager, isActive } =
         createClinicDto;
 
-      //  // Validate permissions
-      //  this.validateSuperadminCreation(payload.userType, userType as UserType);
+      // Validate permissions
+      this.validateClinicCreation(payload.userType);
 
-      //  // Check for existing users
-      //  await this.validateUniqueUserFields(email, username);
+      // Check for Validate unique fields before creating the clinic
+      await this.validateUniqueClinicFields(name, address, phone, email);
 
       const [newClinic] = await this.db
         .insert(clinics)
@@ -47,16 +42,17 @@ export class ClinicsService {
           manager,
           isActive,
         })
-        .returning();
+        .returning({ id: clinics.id });
 
+      if (!newClinic || !newClinic.id) {
+        throw new BadRequestException(
+          'Failed to create clinic: No ID returned',
+        );
+      }
       // Associate all superadmins with the new clinic
-      await this._clinicsUsersProvider.onCreateClinicFindAllSuperAdminsAndInsert(
+      await this._clinicsUsersProvider.associateClinicWithAllSuperadmins(
         newClinic.id,
       );
-
-      if (!newClinic) {
-        throw new BadRequestException('Failed to create clinic');
-      }
 
       return newClinic;
     } catch (error) {
@@ -115,53 +111,85 @@ export class ClinicsService {
   remove(id: number) {
     return `This action removes a #${id} clinic`;
   }
-
   /**
-   * Associates all superadmins with a newly created clinic by inserting records into the usersClinics table.
-   * @param clinicId - The ID of the newly created clinic
-   * @returns Promise<void> - Resolves when the operation is complete
+   * Validates that the clinic does not already exist
+   * by checking name, address, phone, and email.
    */
-  private async onCreateClinicFindAllSuperAdminsAndInsert(
-    clinicId: number,
+  private async validateUniqueClinicFields(
+    name?: string,
+    address?: string,
+    phone?: string,
+    email?: string,
   ): Promise<void> {
-    // Step 1: Find all users with the 'SUPERADMIN' userType
-    const superAdmins = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.userType, 'SUPERADMIN'));
+    if (!name && !address && !phone && !email) return;
 
-    // Step 2: Prepare records to insert into usersClinics
-    const insertions = superAdmins.map((superAdmin) => ({
-      userId: superAdmin.id,
-      clinicId: clinicId,
-    }));
+    // Query for existing clinics based on provided fields
+    const existingClinics = await this.db.query.clinics.findMany({
+      where: or(
+        ...(name ? [eq(clinics.name, name)] : []),
+        ...(address ? [eq(clinics.address, address)] : []),
+        ...(phone ? [eq(clinics.phone, phone)] : []),
+        ...(email ? [eq(clinics.email, email)] : []),
+      ),
+    });
 
-    // Step 3: Insert records into usersClinics if there are any superadmins
-    if (insertions.length > 0) {
-      await this.db.insert(usersClinics).values(insertions);
+    if (existingClinics.length > 0) {
+      const isNameTaken = existingClinics.some(
+        (clinic) => clinic.name === name,
+      );
+      const isAddressTaken = existingClinics.some(
+        (clinic) => clinic.address === address,
+      );
+      const isPhoneTaken = existingClinics.some(
+        (clinic) => clinic.phone === phone,
+      );
+      const isEmailTaken = existingClinics.some(
+        (clinic) => clinic.email === email,
+      );
+
+      if (isNameTaken) {
+        throw new BadRequestException('Clinic name already exists');
+      }
+      if (isAddressTaken) {
+        throw new BadRequestException('Clinic address already exists');
+      }
+      if (isPhoneTaken) {
+        throw new BadRequestException('Clinic phone number already exists');
+      }
+      if (isEmailTaken) {
+        throw new BadRequestException('Clinic email already exists');
+      }
     }
   }
 
   /**
-   * Retrieves the clinics associated with the given user ID.
-   * Only includes active and non-deleted clinics.
-   * @param userid - The ID of the user
-   * @returns A promise that resolves to an array of clinic objects
+   * Validates if a user has permission to create a clinic
+   * @param userType The user type of the requester
    */
-  private async findCurrentUserClinics(userid: number): Promise<any[]> {
-    const result = await this.db
-      .select({ clinic: clinics })
-      .from(usersClinics)
-      .innerJoin(clinics, eq(usersClinics.clinicId, clinics.id))
-      .where(
-        and(
-          eq(usersClinics.userId, userid),
-          isNull(clinics.deletedAt),
-          eq(clinics.isActive, true),
-        ),
-      );
+  private validateClinicCreation(userType: UserType): void {
+    if (userType !== UserType.SUPERADMIN) {
+      throw new BadRequestException('Only superadmins can create clinics');
+    }
+  }
 
-    return result.map((row) => row.clinic);
+  /**
+   * Validates if a user has permission to modify a clinic
+   * @param userType The user type of the requester
+   */
+  private validateClinicModification(userType: UserType): void {
+    if (userType !== UserType.SUPERADMIN) {
+      throw new BadRequestException('Only superadmins can modify clinics');
+    }
+  }
+
+  /**
+   * Validates if a user has permission to delete a clinic
+   * @param userType The user type of the requester
+   */
+  private validateClinicDeletion(userType: UserType): void {
+    if (userType !== UserType.SUPERADMIN) {
+      throw new BadRequestException('Only superadmins can delete clinics');
+    }
   }
 
   /**

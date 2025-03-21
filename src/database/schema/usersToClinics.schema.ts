@@ -14,8 +14,8 @@ export const usersClinics = pgTable(
   'users_clinics',
   {
     id: serial('id').primaryKey(),
-    userId: integer('userId').notNull().unique(),
-    clinicId: integer('clinicId').notNull().unique(),
+    userId: integer('userId').notNull(), // Remove .unique()
+    clinicId: integer('clinicId').notNull(), // Remove .unique()
   },
   (table) => ({
     userIndex: index('users_clinics_user_id_index').on(table.userId),
