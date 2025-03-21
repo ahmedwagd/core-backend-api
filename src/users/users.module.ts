@@ -4,12 +4,18 @@ import { AuthModule } from '../auth/auth.module';
 import { DatabaseModule } from '../database/database.module';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
-import { UsersToClinicsService } from './usersToClinics.service';
+import { UsersToClinicsProvider } from './usersToClinics.provider';
+import { ClinicsModule } from 'src/clinics/clinics.module';
 
 @Module({
   controllers: [UsersController],
-  providers: [UsersService, UsersToClinicsService],
-  imports: [DatabaseModule, forwardRef(() => AuthModule), JwtModule],
+  providers: [UsersService, UsersToClinicsProvider],
+  imports: [
+    forwardRef(() => AuthModule),
+    forwardRef(() => ClinicsModule),
+    JwtModule,
+    DatabaseModule,
+  ],
   exports: [UsersService],
 })
 export class UsersModule {}

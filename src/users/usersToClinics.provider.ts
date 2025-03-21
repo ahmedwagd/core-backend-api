@@ -1,4 +1,4 @@
-import { Inject } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { and, eq, isNull } from 'drizzle-orm';
 import { DRIZZLE } from 'src/database/database.module';
 import { clinics } from 'src/database/schema/clinics.schema';
@@ -6,9 +6,11 @@ import { usersClinics } from 'src/database/schema/usersToClinics.schema';
 import { DrizzleDBType } from 'src/utils/global';
 import { UsersService } from './users.service';
 
-export class UsersToClinicsService {
+@Injectable()
+export class UsersToClinicsProvider {
   constructor(
     @Inject(DRIZZLE) private db: DrizzleDBType,
+    @Inject(forwardRef(() => UsersService))
     private _usersService: UsersService,
   ) {}
 
@@ -75,5 +77,40 @@ export class UsersToClinicsService {
 
     // Return the clinic data
     return result[0].clinic;
+  }
+
+  /**
+   * Associates a newly created superadmin user with all active clinics.
+   * This function should be called after a superadmin user is created.
+   * @param superAdminId - The ID of the newly created superadmin user
+   * @returns Promise<void> - Resolves when the operation is complete
+   */
+  public async ifUserTypeSuperAdminInsertUserToAllClinics(
+    superAdminId: number,
+  ): Promise<void> {
+    // Step 1: Verify the user is a superadmin
+    const user = await this._usersService.findOne(superAdminId);
+
+    if (user.userType !== 'SUPERADMIN') {
+      // Only proceed if the user is a superadmin
+      return;
+    }
+
+    // Step 2: Find all active and non-deleted clinics
+    const activeClinics = await this.db
+      .select({ id: clinics.id })
+      .from(clinics)
+      .where(and(isNull(clinics.deletedAt), eq(clinics.isActive, true)));
+
+    // Step 3: Prepare records to insert into usersClinics junction table
+    const insertions = activeClinics.map((clinic) => ({
+      userId: superAdminId,
+      clinicId: clinic.id,
+    }));
+
+    // Step 4: Insert records into usersClinics if there are any active clinics
+    if (insertions.length > 0) {
+      await this.db.insert(usersClinics).values(insertions);
+    }
   }
 }

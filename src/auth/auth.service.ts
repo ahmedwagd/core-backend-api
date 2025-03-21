@@ -15,14 +15,14 @@ import {
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { UsersToClinicsService } from 'src/users/usersToClinics.service';
+import { UsersToClinicsProvider } from 'src/users/usersToClinics.provider';
 
 @Injectable()
 export class AuthService {
   constructor(
     @Inject(DRIZZLE) private db: DrizzleDBType,
     private readonly _usersService: UsersService,
-    private readonly _usersToClinicService: UsersToClinicsService,
+    private readonly _usersToClinicService: UsersToClinicsProvider,
     private readonly _jwtService: JwtService,
     // private readonly _mailService: MailService,
   ) {}

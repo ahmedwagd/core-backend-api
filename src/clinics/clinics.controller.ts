@@ -1,15 +1,33 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { ClinicsService } from './clinics.service';
 import { CreateClinicDto } from './dto/create-clinic.dto';
 import { UpdateClinicDto } from './dto/update-clinic.dto';
+import { Roles } from 'src/auth/decorators/user-role.decorator';
+import { JWTPayloadType, UserType } from 'src/utils/global';
+import { AuthRolesGuard } from 'src/auth/guards/auth-roles.guard';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 
 @Controller('clinics')
 export class ClinicsController {
   constructor(private readonly clinicsService: ClinicsService) {}
 
   @Post()
-  create(@Body() createClinicDto: CreateClinicDto) {
-    return this.clinicsService.create(createClinicDto);
+  @Roles(UserType.SUPERADMIN)
+  @UseGuards(AuthRolesGuard)
+  async create(
+    @CurrentUser() payload: JWTPayloadType,
+    @Body() createClinicDto: CreateClinicDto,
+  ) {
+    return this.clinicsService.create(payload, createClinicDto);
   }
 
   @Get()

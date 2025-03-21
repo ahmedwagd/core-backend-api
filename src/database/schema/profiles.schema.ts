@@ -29,7 +29,11 @@ export const profiles = pgTable(
     gender: genderEnum('gender').notNull(),
     userId: integer('userId').notNull().unique(),
     createdAt: timestamp('createdAt', { precision: 3 }).notNull().defaultNow(),
-    updatedAt: timestamp('updatedAt', { precision: 3 }).notNull(),
+    updatedAt: timestamp('updatedAt', { precision: 3 })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+    deletedAt: timestamp('deletedAt', { precision: 3 }),
   },
   (table) => ({
     idIndex: index('users_profiles_id_key').on(table.id),

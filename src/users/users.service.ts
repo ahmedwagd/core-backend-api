@@ -1,4 +1,9 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+} from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { asc, eq, or, sql } from 'drizzle-orm';
 import { DRIZZLE } from 'src/database/database.module';
@@ -6,10 +11,15 @@ import { users } from 'src/database/schema/users.schema';
 import { DrizzleDBType, JWTPayloadType, UserType } from 'src/utils/global';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UsersToClinicsProvider } from './usersToClinics.provider';
 
 @Injectable()
 export class UsersService {
-  constructor(@Inject(DRIZZLE) private db: DrizzleDBType) {}
+  constructor(
+    @Inject(DRIZZLE) private db: DrizzleDBType,
+    @Inject(forwardRef(() => UsersToClinicsProvider))
+    private _usersToClinicsProvider: UsersToClinicsProvider,
+  ) {}
 
   /**
    * Get all users from the database with pagination
@@ -34,6 +44,9 @@ export class UsersService {
           offset,
           limit,
           orderBy: [asc(users.id)],
+          with: {
+            clinics: true,
+          },
         }),
         this.db
           .select({ count: sql<number>`count(*)`.as('count') }) // Explicit alias
@@ -86,6 +99,13 @@ export class UsersService {
 
       if (!newUser) {
         throw new BadRequestException('Failed to create user');
+      }
+
+      // If the new user is a superadmin, associate with all clinics
+      if (newUser.userType === UserType.SUPERADMIN) {
+        await this._usersToClinicsProvider.ifUserTypeSuperAdminInsertUserToAllClinics(
+          newUser.id,
+        );
       }
 
       return newUser;

@@ -6,12 +6,14 @@ import { UsersModule } from '../users/users.module';
 import { UsersService } from '../users/users.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { UsersToClinicsService } from 'src/users/usersToClinics.service';
+import { UsersToClinicsProvider } from 'src/users/usersToClinics.provider';
+import { ClinicsModule } from 'src/clinics/clinics.module';
 
 @Module({
   imports: [
     // MailModule,
     forwardRef(() => UsersModule),
+    forwardRef(() => ClinicsModule),
     // PassportModule,
     DatabaseModule,
     JwtModule.registerAsync({
@@ -24,7 +26,7 @@ import { UsersToClinicsService } from 'src/users/usersToClinics.service';
       },
     }),
   ],
-  providers: [AuthService, UsersService, UsersToClinicsService],
+  providers: [AuthService, UsersService, UsersToClinicsProvider],
   controllers: [AuthController],
   exports: [AuthService],
 })

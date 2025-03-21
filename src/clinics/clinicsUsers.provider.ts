@@ -1,4 +1,4 @@
-import { Inject } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { DRIZZLE } from 'src/database/database.module';
 import { DrizzleDBType } from 'src/utils/global';
 import { ClinicsService } from './clinics.service';
@@ -6,10 +6,11 @@ import { users } from 'src/database/schema/users.schema';
 import { and, eq, isNull } from 'drizzle-orm';
 import { usersClinics } from 'src/database/schema/usersToClinics.schema';
 import { clinics } from 'src/database/schema/clinics.schema';
-
-export class ClinicsUsersService {
+@Injectable()
+export class ClinicsUsersProvider {
   constructor(
     @Inject(DRIZZLE) private db: DrizzleDBType,
+    @Inject(forwardRef(() => ClinicsService))
     private _clinicsService: ClinicsService,
   ) {}
 

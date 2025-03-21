@@ -20,7 +20,10 @@ export const clinics = pgTable(
     email: varchar('email', { length: 100 }).unique(),
     isActive: boolean('isActive').notNull().default(true),
     createdAt: timestamp('createdAt', { precision: 3 }).notNull().defaultNow(),
-    updatedAt: timestamp('updatedAt', { precision: 3 }).notNull(),
+    updatedAt: timestamp('updatedAt', { precision: 3 })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
     deletedAt: timestamp('deletedAt', { precision: 3 }),
   },
   (table) => ({
