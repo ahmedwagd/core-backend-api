@@ -100,16 +100,75 @@ export class ClinicsService {
     }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} clinic`;
+  /**
+   * Find a clinic by its ID
+   * @param id - The ID of the clinic to find
+   * @returns The found clinic
+   * @throws BadRequestException if no clinic is found
+   */
+  async findOne(id: number): Promise<typeof clinics.$inferSelect> {
+    try {
+      const clinic = await this.db.query.clinics.findFirst({
+        where: (clinic, { eq }) => eq(clinic.id, id),
+      });
+
+      if (!clinic) throw new BadRequestException('Clinic not found');
+      return clinic;
+    } catch (error) {
+      this.handleError(error, 'Failed to fetch clinic');
+    }
   }
 
-  update(id: number, updateClinicDto: UpdateClinicDto) {
-    return `This action updates a #${id} ${updateClinicDto.name} clinic`;
+  /**
+   * Update a clinic's information
+   * @param payload - The JWT payload of the requesting user
+   * @param id - The ID of the clinic to update
+   * @param updateClinicDto - The updated clinic data
+   * @returns The updated clinic
+   * @throws BadRequestException if clinic not found or unauthorized
+   */
+  async update(
+    payload: JWTPayloadType,
+    id: number,
+    updateClinicDto: UpdateClinicDto,
+  ): Promise<typeof clinics.$inferSelect> {
+    try {
+      this.validateClinicModification(payload.userType);
+      await this.findOne(id); // Just ensure it exists
+
+      const [updatedClinic] = await this.db
+        .update(clinics)
+        .set(updateClinicDto)
+        .where(eq(clinics.id, id))
+        .returning();
+
+      if (!updatedClinic)
+        throw new BadRequestException('Failed to update clinic');
+      return updatedClinic;
+    } catch (error) {
+      this.handleError(error, 'Failed to update clinic');
+    }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} clinic`;
+  /**
+   * Remove a clinic by its ID
+   * @param payload - The JWT payload of the requesting user
+   * @param id - The ID of the clinic to remove
+   * @returns A message indicating the clinic was deleted
+   * @throws BadRequestException if clinic not found or unauthorized
+   */
+  async remove(
+    payload: JWTPayloadType,
+    id: number,
+  ): Promise<{ message: string }> {
+    try {
+      this.validateClinicDeletion(payload.userType);
+      await this.findOne(id); // Ensures clinic exists before deletion
+      await this.db.delete(clinics).where(eq(clinics.id, id)).execute();
+      return { message: 'Clinic deleted successfully' };
+    } catch (error) {
+      this.handleError(error, 'Failed to delete clinic');
+    }
   }
   /**
    * Validates that the clinic does not already exist

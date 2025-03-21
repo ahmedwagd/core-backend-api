@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ClinicsService } from './clinics.service';
 import { CreateClinicDto } from './dto/create-clinic.dto';
@@ -31,6 +32,8 @@ export class ClinicsController {
   }
 
   @Get()
+  @Roles(UserType.SUPERADMIN)
+  @UseGuards(AuthRolesGuard)
   findAll() {
     return this.clinicsService.findAll();
   }
@@ -41,12 +44,23 @@ export class ClinicsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateClinicDto: UpdateClinicDto) {
-    return this.clinicsService.update(+id, updateClinicDto);
+  @Roles(UserType.SUPERADMIN)
+  @UseGuards(AuthRolesGuard)
+  update(
+    @CurrentUser() payload: JWTPayloadType,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateClinicDto: UpdateClinicDto,
+  ) {
+    return this.clinicsService.update(payload, id, updateClinicDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.clinicsService.remove(+id);
+  @Roles(UserType.SUPERADMIN)
+  @UseGuards(AuthRolesGuard)
+  remove(
+    @CurrentUser() payload: JWTPayloadType,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.clinicsService.remove(payload, id);
   }
 }
