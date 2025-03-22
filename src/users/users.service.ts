@@ -12,6 +12,9 @@ import { DrizzleDBType, JWTPayloadType, UserType } from 'src/utils/global';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersToClinicsProvider } from './usersToClinics.provider';
+import { ProfilesService } from 'src/profiles/profiles.service';
+import { CreateUserWithProfileDto } from './dto/create-user-with-profile.dto';
+import { profiles } from 'src/database/schema/profiles.schema';
 
 @Injectable()
 export class UsersService {
@@ -19,6 +22,8 @@ export class UsersService {
     @Inject(DRIZZLE) private db: DrizzleDBType,
     @Inject(forwardRef(() => UsersToClinicsProvider))
     private _usersToClinicsProvider: UsersToClinicsProvider,
+    @Inject(forwardRef(() => ProfilesService))
+    private _profilesService: ProfilesService,
   ) {}
 
   /**
@@ -109,6 +114,80 @@ export class UsersService {
       }
 
       return newUser;
+    } catch (error) {
+      this.handleError(error, 'Failed to create user');
+    }
+  }
+
+  async createUserWithProfile(
+    payload: JWTPayloadType,
+    createUserDto: CreateUserWithProfileDto,
+  ): Promise<{
+    user: typeof users.$inferSelect;
+    profile?: typeof profiles.$inferSelect;
+  }> {
+    try {
+      const { email, password, username, userType, isVerified, profile } =
+        createUserDto;
+
+      // Validate permissions
+      this.validateSuperadminCreation(payload.userType, userType as UserType);
+
+      // Check for existing users
+      await this.validateUniqueUserFields(email, username);
+
+      // Start a transaction to ensure both user and profile are created or neither is
+      return await this.db.transaction(async (tx) => {
+        // Hash password and create user
+        const hashedPassword = await this.hashPassword(password);
+        const [newUser] = await tx
+          .insert(users)
+          .values({
+            email,
+            username,
+            userType: userType as UserType,
+            isVerified,
+            password: hashedPassword,
+          })
+          .returning();
+
+        if (!newUser) {
+          throw new BadRequestException('Failed to create user');
+        }
+
+        // If the new user is a superadmin, associate with all clinics
+        if (newUser.userType === UserType.SUPERADMIN) {
+          await this._usersToClinicsProvider.onCreateSuperAdminAssociateWithAllClinics(
+            newUser.id,
+          );
+        }
+
+        // Create profile if provided
+        let userProfile;
+        if (profile) {
+          const profileData = {
+            ...profile,
+            userId: newUser.id,
+          };
+
+          const [newProfile] = await tx
+            .insert(profiles)
+            .values(profileData)
+            .returning();
+
+          if (!newProfile) {
+            throw new BadRequestException('Failed to create profile');
+          }
+
+          userProfile = newProfile;
+        }
+
+        return {
+          user: newUser,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          profile: userProfile,
+        };
+      });
     } catch (error) {
       this.handleError(error, 'Failed to create user');
     }

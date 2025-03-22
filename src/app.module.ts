@@ -6,6 +6,7 @@ import { CLoggerModule } from './logger/logger.module';
 import { UsersModule } from './users/users.module';
 import { ClinicsModule } from './clinics/clinics.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { ProfilesModule } from './profiles/profiles.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
     AuthModule,
     CLoggerModule,
     ClinicsModule,
+    ProfilesModule,
     // MailModule,
   ],
   controllers: [],

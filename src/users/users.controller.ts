@@ -17,25 +17,39 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { CreateUserWithProfileDto } from './dto/create-user-with-profile.dto';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly _usersService: UsersService) {}
 
-  @Post('create')
+  @Post()
   @Roles(UserType.SUPERADMIN, UserType.MANAGER)
   @UseGuards(AuthRolesGuard)
   async create(
     @CurrentUser() payload: JWTPayloadType,
     @Body() createUserDto: CreateUserDto,
   ) {
-    return await this._usersService.create(payload, createUserDto);
+    return this._usersService.create(payload, createUserDto);
+  }
+
+  @Post('create')
+  @Roles(UserType.SUPERADMIN, UserType.MANAGER)
+  @UseGuards(AuthRolesGuard)
+  async createUserWithProfile(
+    @CurrentUser() payload: JWTPayloadType,
+    @Body() createUserWithProfileDto: CreateUserWithProfileDto,
+  ) {
+    return this._usersService.createUserWithProfile(
+      payload,
+      createUserWithProfileDto,
+    );
   }
 
   @Get()
   @Roles(UserType.SUPERADMIN, UserType.MANAGER)
   @UseGuards(AuthRolesGuard)
-  findAll() {
+  async findAll() {
     return this._usersService.getAll();
   }
 

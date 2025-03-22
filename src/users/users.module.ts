@@ -6,6 +6,7 @@ import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { UsersToClinicsProvider } from './usersToClinics.provider';
 import { ClinicsModule } from 'src/clinics/clinics.module';
+import { ProfilesModule } from 'src/profiles/profiles.module';
 
 @Module({
   controllers: [UsersController],
@@ -13,6 +14,7 @@ import { ClinicsModule } from 'src/clinics/clinics.module';
   imports: [
     forwardRef(() => AuthModule),
     forwardRef(() => ClinicsModule),
+    forwardRef(() => ProfilesModule),
     JwtModule,
     DatabaseModule,
   ],

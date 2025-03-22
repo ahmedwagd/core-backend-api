@@ -29,13 +29,13 @@ export class ClinicsController {
     @CurrentUser() payload: JWTPayloadType,
     @Body() createClinicDto: CreateClinicDto,
   ) {
-    return await this.clinicsService.create(payload, createClinicDto);
+    return this.clinicsService.create(payload, createClinicDto);
   }
 
   @Get()
   @Roles(UserType.SUPERADMIN)
   @UseGuards(AuthRolesGuard)
-  findAll() {
+  async findAll() {
     return this.clinicsService.findAll();
   }
 
@@ -47,7 +47,7 @@ export class ClinicsController {
   @Patch(':id')
   @Roles(UserType.SUPERADMIN)
   @UseGuards(AuthRolesGuard)
-  update(
+  async update(
     @CurrentUser() payload: JWTPayloadType,
     @Param('id', ParseIntPipe) id: number,
     @Body() updateClinicDto: UpdateClinicDto,
@@ -58,7 +58,7 @@ export class ClinicsController {
   @Put(':id')
   @Roles(UserType.SUPERADMIN)
   @UseGuards(AuthRolesGuard)
-  softRemove(
+  async softRemove(
     @CurrentUser() payload: JWTPayloadType,
     @Param('id', ParseIntPipe) id: number,
   ) {
@@ -68,7 +68,7 @@ export class ClinicsController {
   @Delete(':id')
   @Roles(UserType.SUPERADMIN)
   @UseGuards(AuthRolesGuard)
-  remove(
+  async remove(
     @CurrentUser() payload: JWTPayloadType,
     @Param('id', ParseIntPipe) id: number,
   ) {

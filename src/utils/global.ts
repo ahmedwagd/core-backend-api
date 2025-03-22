@@ -20,3 +20,7 @@ export enum UserType {
   DOCTOR = 'DOCTOR',
   USER = 'USER',
 }
+export enum Gender {
+  MALE = 'MALE',
+  FEMALE = 'FEMALE',
+}

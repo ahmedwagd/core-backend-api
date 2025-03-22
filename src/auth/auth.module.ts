@@ -8,12 +8,14 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { UsersToClinicsProvider } from 'src/users/usersToClinics.provider';
 import { ClinicsModule } from 'src/clinics/clinics.module';
+import { ProfilesModule } from 'src/profiles/profiles.module';
 
 @Module({
   imports: [
     // MailModule,
     forwardRef(() => UsersModule),
     forwardRef(() => ClinicsModule),
+    forwardRef(() => ProfilesModule),
     // PassportModule,
     DatabaseModule,
     JwtModule.registerAsync({
