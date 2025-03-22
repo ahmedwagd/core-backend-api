@@ -17,6 +17,24 @@ export class UsersToClinicsProvider {
   // Todo - change clinics
   // public async changeClinics(payload: JWTPayloadType, clinicId: number) {}
 
+  // get current clinics for user add return type
+  public async getCurrentUserClinics(userId: number): Promise<any[]> {
+    const clinicRecords = await this.db
+      .select({
+        id: clinics.id,
+        name: clinics.name,
+        // Add other clinic fields as needed
+      })
+      .from(usersClinics)
+      .innerJoin(clinics, eq(clinics.id, usersClinics.clinicId))
+      .where(eq(usersClinics.userId, userId));
+
+    return clinicRecords.map((record) => ({
+      id: record.id,
+      name: record.name,
+    }));
+  }
+
   /**
    * Retrieves the data of the clinic associated with the given user ID.
    * Returns null if no active clinic is associated with the user.
@@ -53,7 +71,6 @@ export class UsersToClinicsProvider {
    * @param superAdminId - The ID of the newly created superadmin user
    * @returns Promise<void> - Resolves when the operation is complete
    */
-
   public async onCreateSuperAdminAssociateWithAllClinics(
     superAdminId: number,
   ): Promise<void> {
