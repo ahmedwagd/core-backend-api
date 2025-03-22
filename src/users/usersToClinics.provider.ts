@@ -17,38 +17,6 @@ export class UsersToClinicsProvider {
   // Todo - change clinics
   // public async changeClinics(payload: JWTPayloadType, clinicId: number) {}
 
-  // get current clinics for user add return type
-  public async getCurrentUserClinics(userId: number): Promise<any[]> {
-    const clinicRecords = await this.db
-      .select({
-        id: clinics.id,
-        name: clinics.name,
-        // Add other clinic fields as needed
-      })
-      .from(usersClinics)
-      .innerJoin(clinics, eq(clinics.id, usersClinics.clinicId))
-      .where(eq(usersClinics.userId, userId));
-
-    return clinicRecords.map((record) => ({
-      id: record.id,
-      name: record.name,
-    }));
-
-    // const result = await this.db
-    //   .select({ clinic: clinics })
-    //   .from(usersClinics)
-    //   .innerJoin(clinics, eq(usersClinics.clinicId, clinics.id))
-    //   .where(
-    //     and(
-    //       eq(usersClinics.userId, userId),
-    //       isNull(clinics.deletedAt),
-    //       eq(clinics.isActive, true),
-    //     ),
-    //   );
-
-    // return result.map((row) => row.clinic);
-  }
-
   /**
    * Retrieves the data of the clinic associated with the given user ID.
    * Returns null if no active clinic is associated with the user.
@@ -85,28 +53,7 @@ export class UsersToClinicsProvider {
    * @param superAdminId - The ID of the newly created superadmin user
    * @returns Promise<void> - Resolves when the operation is complete
    */
-  // public async ifUserTypeSuperAdminInsertUserToAllClinics(
-  //   superAdminId: number,
-  // ): Promise<void> {
-  //   // Find all active and non-deleted clinics directly
-  //   const activeClinics = await this.db
-  //     .select({ id: clinics.id })
-  //     .from(clinics)
-  //     .where(and(isNull(clinics.deletedAt), eq(clinics.isActive, true)));
 
-  //   // Prepare records to insert into usersClinics junction table
-  //   const insertions = activeClinics.map((clinic) => ({
-  //     userId: superAdminId,
-  //     clinicId: clinic.id,
-  //   }));
-
-  //   // Insert records into usersClinics if there are any active clinics
-  //   if (insertions.length > 0) {
-  //     await this.db.insert(usersClinics).values(insertions);
-  //   }
-  // }
-
-  // Todo add Documentation
   public async onCreateSuperAdminAssociateWithAllClinics(
     superAdminId: number,
   ): Promise<void> {

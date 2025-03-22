@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   ParseIntPipe,
+  Put,
 } from '@nestjs/common';
 import { ClinicsService } from './clinics.service';
 import { CreateClinicDto } from './dto/create-clinic.dto';
@@ -52,6 +53,16 @@ export class ClinicsController {
     @Body() updateClinicDto: UpdateClinicDto,
   ) {
     return this.clinicsService.update(payload, id, updateClinicDto);
+  }
+
+  @Put(':id')
+  @Roles(UserType.SUPERADMIN)
+  @UseGuards(AuthRolesGuard)
+  softRemove(
+    @CurrentUser() payload: JWTPayloadType,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.clinicsService.softDelete(payload, id);
   }
 
   @Delete(':id')

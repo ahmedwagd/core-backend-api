@@ -136,6 +136,14 @@ export class ClinicsService {
       this.validateClinicModification(payload.userType);
       await this.findOne(id); // Just ensure it exists
 
+      // Validate uniqueness of provided fields
+      await this.validateUniqueClinicFields(
+        updateClinicDto.name,
+        updateClinicDto.address,
+        updateClinicDto.phone,
+        updateClinicDto.email,
+      );
+
       const [updatedClinic] = await this.db
         .update(clinics)
         .set(updateClinicDto)
@@ -163,16 +171,52 @@ export class ClinicsService {
   ): Promise<{ message: string }> {
     try {
       this.validateClinicDeletion(payload.userType);
-      await this.findOne(id); // Ensures clinic exists before deletion
-      await this.db.delete(clinics).where(eq(clinics.id, id)).execute();
+
+      const clinic = await this.findOne(id);
+      if (!clinic) throw new BadRequestException('Clinic not found');
+
+      const deleted = await this.db
+        .delete(clinics)
+        .where(eq(clinics.id, id))
+        .execute();
+
+      if (!deleted) throw new BadRequestException('Failed to delete clinic');
+
       return { message: 'Clinic deleted successfully' };
     } catch (error) {
+      console.error('Error deleting clinic:', error);
       this.handleError(error, 'Failed to delete clinic');
     }
   }
+  async softDelete(
+    payload: JWTPayloadType,
+    id: number,
+  ): Promise<{ message: string }> {
+    try {
+      this.validateClinicModification(payload.userType);
+      await this.findOne(id); // Ensures clinic exists before deletion
+
+      const [updatedClinic] = await this.db
+        .update(clinics)
+        .set({ isActive: false })
+        .where(eq(clinics.id, id))
+        .returning();
+
+      if (!updatedClinic)
+        throw new BadRequestException('Failed to deactivate clinic');
+      return { message: 'Clinic deactivated successfully' };
+    } catch (error) {
+      this.handleError(error, 'Failed to deactivate clinic');
+    }
+  }
+
   /**
-   * Validates that the clinic does not already exist
-   * by checking name, address, phone, and email.
+   * Validates that clinic fields (name, address, phone, email) are unique before updating.
+   * @param name - Clinic name
+   * @param address - Clinic address
+   * @param phone - Clinic phone number
+   * @param email - Clinic email
+   * @throws BadRequestException if any field is already in use
    */
   private async validateUniqueClinicFields(
     name?: string,

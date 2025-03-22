@@ -14,8 +14,8 @@ export const usersClinics = pgTable(
   'users_clinics',
   {
     id: serial('id').primaryKey(),
-    userId: integer('userId').notNull(), // Remove .unique()
-    clinicId: integer('clinicId').notNull(), // Remove .unique()
+    userId: integer('userId').notNull(),
+    clinicId: integer('clinicId').notNull(),
   },
   (table) => ({
     userIndex: index('users_clinics_user_id_index').on(table.userId),
@@ -25,13 +25,13 @@ export const usersClinics = pgTable(
       columns: [table.userId],
       foreignColumns: [users.id],
     })
-      .onDelete('restrict')
+      .onDelete('restrict') // Prevent deletion of users when a clinic is deleted
       .onUpdate('cascade'),
     clinicFk: foreignKey({
       columns: [table.clinicId],
       foreignColumns: [clinics.id],
     })
-      .onDelete('restrict')
+      .onDelete('cascade') // Automatically remove relations when a clinic is deleted
       .onUpdate('cascade'),
   }),
 );

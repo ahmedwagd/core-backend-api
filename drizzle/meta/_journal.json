@@ -57,6 +57,13 @@
       "when": 1742598389712,
       "tag": "0007_fixed_loa",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1742601664882,
+      "tag": "0008_even_master_chief",
+      "breakpoints": true
     }
   ]
 }
