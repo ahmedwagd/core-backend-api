@@ -375,30 +375,6 @@ export const cancellationLogs = pgTable(
   }),
 );
 
-export const clinicToUser = pgTable(
-  '_ClinicToUser',
-  {
-    a: integer('A').notNull(),
-    b: integer('B').notNull(),
-  },
-  (table) => ({
-    pk: uniqueIndex('_ClinicToUser_AB_pkey').on(table.a, table.b),
-    clinicFk: foreignKey({
-      columns: [table.a],
-      foreignColumns: [clinics.id],
-    })
-      .onDelete('cascade')
-      .onUpdate('cascade'),
-    userFk: foreignKey({
-      columns: [table.b],
-      foreignColumns: [users.id],
-    })
-      .onDelete('cascade')
-      .onUpdate('cascade'),
-    bIdx: uniqueIndex('_ClinicToUser_B_index').on(table.b),
-  }),
-);
-
 // Relations (optional, but recommended for type safety)
 export const usersRelations = relations(users, ({ one, many }) => ({
   profile: one(usersProfiles, {
@@ -542,14 +518,3 @@ export const cancellationLogsRelations = relations(
     }),
   }),
 );
-
-export const clinicToUserRelations = relations(clinicToUser, ({ one }) => ({
-  clinic: one(clinics, {
-    fields: [clinicToUser.a],
-    references: [clinics.id],
-  }),
-  user: one(users, {
-    fields: [clinicToUser.b],
-    references: [users.id],
-  }),
-}));
